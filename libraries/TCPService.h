@@ -1,15 +1,13 @@
-#include <string>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-using std::string;
-
 class Server {
     private:
-        string ip;
+        const char* ip;
 
         int port;
         int bufferLimit;
@@ -28,7 +26,7 @@ class Server {
         void resetCharBuff(char*, int);
 
     public:
-        Server(string, int);
+        Server(const char*, int);
 
         void setBufferLimit(int);
         void setDebug(bool);
@@ -45,7 +43,7 @@ class Server {
 };
 
 // initializes the ip and port to be used
-Server::Server(string ip, int port) {
+Server::Server(const char* ip, int port) {
     this->ip = ip;
     this->port = port;
     this->bufferLimit = 1024;
@@ -95,7 +93,7 @@ void Server::start() {
     // setting sockaddr_in properties
     addr.sin_family = AF_INET;
     addr.sin_port = htons(this->port);
-    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_addr.s_addr = inet_addr(ip);
 
     // binding ip and port
     if (bind(serverFD, (sockaddr*)&addr, sizeof(addr)) < 0) {
