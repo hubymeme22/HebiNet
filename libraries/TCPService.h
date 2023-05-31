@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 class Server {
     private:
@@ -38,7 +39,7 @@ class Server {
 
         // functions bellow are to be overriden
         void listenProcess();
-        void recieveProcess(char*, long);
+        void recieveProcess(char*, int);
         void sendClient(char*);
 };
 
@@ -65,7 +66,6 @@ void Server::setBufferLimit(int bufferLimit) {
 */
 void Server::start() {
     addrLength = sizeof(addr);
-
     int opt=1;
 
     if (this->debug) {
@@ -124,7 +124,11 @@ void Server::listenSingle() {
     while (true) {
         this->resetCharBuff(buffer, bufferLimit);
         int valRead = read(newSocket, buffer, bufferLimit);
-        printf("Recieved: %s", buffer);
+        if (valRead <= 0) break;
+
+        // probably safe to use strlen since we are reseting
+        // the buffer everytime when being called
+        this->recieveProcess(buffer, strlen(buffer));
     }
 }
 
@@ -139,3 +143,8 @@ void Server::stop() { this->listenLoop = false; }
 
 // for printing server status
 void Server::setDebug(bool debugStatus) { this->debug = debugStatus; }
+
+// to be overloaded soon
+void Server::recieveProcess(char* buffer, int bufferSize) {
+    printf("Recieved: %s", buffer);
+}
