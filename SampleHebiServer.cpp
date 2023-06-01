@@ -5,5 +5,5 @@ int main() {
     server->setBufferLimit(520);
     server->setDebug(true);
     server->start();
-    server->listenSingle();
+    server->loopedListen();
 }

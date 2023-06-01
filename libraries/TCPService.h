@@ -4,18 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
+#include <pthread.h>
+
+#include <thread>
+#include <tuple>
+#include <map>
+
+using std::map;
+using std::tuple;
+using std::thread;
 
 class Server {
     private:
         const char* ip;
-
-        int port;
-        int bufferLimit;
-
-        bool listenLoop;
-        bool listening;
-        bool debug;
+        int port, bufferLimit;
+        bool listenLoop, listening, debug;
 
         // server details
         int serverFD;
@@ -23,8 +26,12 @@ class Server {
         fd_set readfs;
         sockaddr_in addr;
 
+        // client thread tracking
+        map<int, tuple<bool*, thread*>> thTracker;
+
         // helper functions
         void resetCharBuff(char*, int);
+        void loopedRecieve(int);
 
     public:
         Server(const char*, int);
@@ -128,7 +135,52 @@ void Server::listenSingle() {
 
         // probably safe to use strlen since we are reseting
         // the buffer everytime when being called
-        this->recieveProcess(buffer, strlen(buffer));
+        this->recieveProcess(buffer, valRead);
+    }
+}
+
+// listens in loop for handling multiple clients
+void Server::loopedListen() {
+    if (this->listening) {
+        puts("[!] Server is already listening");
+        return;
+    }
+
+    this->listening = true;
+    int tmpIndex = 0;
+    while (this->listenLoop) {
+        int newSocket = accept(serverFD, (sockaddr*)&addr, (socklen_t*)&addrLength);
+        if (this->debug) puts("[+] A new client has connected!");
+
+        // spawn a new thread, and save its status
+        thread* th = new thread(&Server::loopedRecieve, this, newSocket);
+        bool* loopStatus = new bool;
+        (*loopStatus) = true;
+
+        // insert the threading and statuses to the tracker
+        thTracker.insert(std::pair<int, tuple<bool*, thread*>>(tmpIndex, tuple<bool*, thread*>(loopStatus, th)));
+    }
+}
+
+// for looped recieving of clients
+void Server::loopedRecieve(int newSocket) {
+    if (newSocket < 0) {
+        perror("SingleClientAcceptError");
+        exit(EXIT_FAILURE);
+    }
+
+    char* buffer = new char[bufferLimit];
+    while (true) {
+        this->resetCharBuff(buffer, bufferLimit);
+        int valRead = read(newSocket, buffer, bufferLimit);
+        if (valRead <= 0) {
+            if (this->debug) puts("[-] A client has disconnected");
+            break;
+        };
+
+        // probably safe to use strlen since we are reseting
+        // the buffer everytime when being called
+        this->recieveProcess(buffer, valRead);
     }
 }
 
