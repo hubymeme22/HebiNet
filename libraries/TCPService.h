@@ -46,8 +46,8 @@ class Server {
 
         // functions bellow are to be overriden
         void listenProcess();
-        void recieveProcess(char*, int);
         void sendClient(char*);
+        virtual void recieveProcess(char*, int);
 };
 
 // initializes the ip and port to be used
@@ -180,7 +180,7 @@ void Server::loopedRecieve(int newSocket) {
 
         // probably safe to use strlen since we are reseting
         // the buffer everytime when being called
-        this->recieveProcess(buffer, valRead);
+        recieveProcess(buffer, valRead);
     }
 }
 
