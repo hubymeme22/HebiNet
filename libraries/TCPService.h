@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <thread>
 #include <tuple>
@@ -13,6 +12,9 @@
 using std::map;
 using std::tuple;
 using std::thread;
+
+#ifndef HEBISERVER_H
+#define HEBISERVER_H
 
 class Server {
     protected:
@@ -27,12 +29,11 @@ class Server {
         sockaddr_in addr;
 
         // client thread tracking
-        map<int, tuple<bool*, thread*>> thTracker;
-        map<int, const char*> p2ptable;
+        map<int, tuple<bool*, thread*, int>> thTracker;
 
         // helper functions
         void resetCharBuff(char*, int);
-        void loopedRecieve(int, int);
+        void loopedRecieve(int, int, bool*);
 
     public:
         Server(const char*, int);
@@ -44,6 +45,7 @@ class Server {
 
         void listenSingle();
         void loopedListen();
+        void closeConnection(int);
 
         // functions bellow are to be overriden
         void listenProcess();
@@ -154,45 +156,54 @@ void Server::loopedListen() {
         if (this->debug) puts("[+] A new client has connected!");
 
         // spawn a new thread, and save its status
-        thread* th = new thread(&Server::loopedRecieve, this, newSocket, tmpIndex);
         bool* loopStatus = new bool;
         (*loopStatus) = true;
 
+
         // insert the threading and statuses to the tracker
-        thTracker.insert(std::pair<int, tuple<bool*, thread*>>(tmpIndex, tuple<bool*, thread*>(loopStatus, th)));
+        thread* th = new thread(&Server::loopedRecieve, this, newSocket, tmpIndex, loopStatus);
+        thTracker.insert(std::pair<int, tuple<bool*, thread*, int>>(tmpIndex, tuple<bool*, thread*, int>(loopStatus, th, newSocket)));
         tmpIndex++;
     }
 }
 
 // for looped recieving of clients
-void Server::loopedRecieve(int newSocket, int id) {
+void Server::loopedRecieve(int newSocket, int id, bool* indicator) {
     if (newSocket < 0) {
         perror("SingleClientAcceptError");
         exit(EXIT_FAILURE);
     }
 
     char* buffer = new char[bufferLimit];
-    while (true) {
+    while (*indicator) {
         this->resetCharBuff(buffer, bufferLimit);
         int valRead = read(newSocket, buffer, bufferLimit);
         if (valRead <= 0) {
             if (this->debug) printf("[-] A client has disconnected (id=%d)\n", id);
-            tuple<bool*, thread*> pair = thTracker.at(id);
-
-            // deallocate the addresses that are not needed anymore
-            bool* inctr = std::get<0>(pair);
-            thread* th = std::get<1>(pair);
-
-            delete inctr, th;
-            thTracker.erase(id);
-
+            if (thTracker.find(id) != thTracker.end()) this->closeConnection(id);
             break;
         }
 
         // probably safe to use strlen since we are reseting
         // the buffer everytime when being called
-        recieveProcess(id, buffer, valRead);
+        this->recieveProcess(id, buffer, valRead);
     }
+}
+
+// closes the connection by using the client id
+void Server::closeConnection(int id) {
+    tuple<bool*, thread*, int> pair = thTracker.at(id);
+
+    // deallocate the addresses that are not needed anymore
+    bool* inctr = std::get<0>(pair);
+    thread* th = std::get<1>(pair);
+    int socket = std::get<2>(pair);
+
+    *inctr = false;
+    close(socket);
+
+    delete inctr, th;
+    thTracker.erase(id);
 }
 
 // for resetting buffers
@@ -211,3 +222,5 @@ void Server::setDebug(bool debugStatus) { this->debug = debugStatus; }
 void Server::recieveProcess(int id, char* buffer, int bufferSize) {
     printf("Thread[%d] Recieved: %s", id, buffer);
 }
+
+#endif
