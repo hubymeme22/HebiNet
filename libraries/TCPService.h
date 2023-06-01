@@ -15,7 +15,7 @@ using std::tuple;
 using std::thread;
 
 class Server {
-    private:
+    protected:
         const char* ip;
         int port, bufferLimit;
         bool listenLoop, listening, debug;
@@ -28,10 +28,11 @@ class Server {
 
         // client thread tracking
         map<int, tuple<bool*, thread*>> thTracker;
+        map<int, const char*> p2ptable;
 
         // helper functions
         void resetCharBuff(char*, int);
-        void loopedRecieve(int);
+        void loopedRecieve(int, int);
 
     public:
         Server(const char*, int);
@@ -47,7 +48,7 @@ class Server {
         // functions bellow are to be overriden
         void listenProcess();
         void sendClient(char*);
-        virtual void recieveProcess(char*, int);
+        virtual void recieveProcess(int, char*, int);
 };
 
 // initializes the ip and port to be used
@@ -135,7 +136,7 @@ void Server::listenSingle() {
 
         // probably safe to use strlen since we are reseting
         // the buffer everytime when being called
-        this->recieveProcess(buffer, valRead);
+        this->recieveProcess(0, buffer, valRead);
     }
 }
 
@@ -153,17 +154,18 @@ void Server::loopedListen() {
         if (this->debug) puts("[+] A new client has connected!");
 
         // spawn a new thread, and save its status
-        thread* th = new thread(&Server::loopedRecieve, this, newSocket);
+        thread* th = new thread(&Server::loopedRecieve, this, newSocket, tmpIndex);
         bool* loopStatus = new bool;
         (*loopStatus) = true;
 
         // insert the threading and statuses to the tracker
         thTracker.insert(std::pair<int, tuple<bool*, thread*>>(tmpIndex, tuple<bool*, thread*>(loopStatus, th)));
+        tmpIndex++;
     }
 }
 
 // for looped recieving of clients
-void Server::loopedRecieve(int newSocket) {
+void Server::loopedRecieve(int newSocket, int id) {
     if (newSocket < 0) {
         perror("SingleClientAcceptError");
         exit(EXIT_FAILURE);
@@ -174,13 +176,22 @@ void Server::loopedRecieve(int newSocket) {
         this->resetCharBuff(buffer, bufferLimit);
         int valRead = read(newSocket, buffer, bufferLimit);
         if (valRead <= 0) {
-            if (this->debug) puts("[-] A client has disconnected");
+            if (this->debug) printf("[-] A client has disconnected (id=%d)\n", id);
+            tuple<bool*, thread*> pair = thTracker.at(id);
+
+            // deallocate the addresses that are not needed anymore
+            bool* inctr = std::get<0>(pair);
+            thread* th = std::get<1>(pair);
+
+            delete inctr, th;
+            thTracker.erase(id);
+
             break;
-        };
+        }
 
         // probably safe to use strlen since we are reseting
         // the buffer everytime when being called
-        recieveProcess(buffer, valRead);
+        recieveProcess(id, buffer, valRead);
     }
 }
 
@@ -197,6 +208,6 @@ void Server::stop() { this->listenLoop = false; }
 void Server::setDebug(bool debugStatus) { this->debug = debugStatus; }
 
 // to be overloaded soon
-void Server::recieveProcess(char* buffer, int bufferSize) {
-    printf("Recieved: %s", buffer);
+void Server::recieveProcess(int id, char* buffer, int bufferSize) {
+    printf("Thread[%d] Recieved: %s", id, buffer);
 }
