@@ -5,8 +5,11 @@
 #include <string>
 #include <map>
 
+using std::map;
+
 class HebiNetServer: public Server {
     private:
+        map<int, bool> acceptedClients;
         const char* key;
         int keySize;
 
@@ -25,14 +28,18 @@ HebiNetServer::HebiNetServer(const char* ip, int port, const char* key): Server(
 
 // initial condition from packet to indicate if the client will be accepted
 bool HebiNetServer::acceptCondition(char* buffer, int bufferSize) {
-    return (strncmp(buffer, "hebi_child_server", 17) == 0);
+    return (strncmp(buffer, this->key, this->keySize) == 0);
 }
 
 // overriden recieve process from server
 void HebiNetServer::recieveProcess(int id, char* buffer, int bufferSize) {
-    if (this->acceptCondition(buffer, bufferSize))
-        printf("Thread[%d] Recieved override: %s", id, buffer);
-
-    // close the connection for the client if not accepted
-    else this->closeConnection(id);
+    // for first time connection, confirm them by their initial packet
+    if (acceptedClients.find(id) == acceptedClients.end()) {
+        if (this->acceptCondition(buffer, bufferSize))
+            acceptedClients.insert(std::pair<int, bool>(id, true));
+        else
+            this->closeConnection(id);
+    } else {
+        printf("Thread[%d] says: %s", id, buffer);
+    }
 }
