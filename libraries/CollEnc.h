@@ -13,6 +13,11 @@
 #ifndef COLLENC_H
 #define COLLENC_H
 
+char* key = 0;
+int keySize = 0;
+char shifts = 0;
+struct list* colz = NULL;
+
 ////////////////////////
 //  helper functions  //
 ////////////////////////
@@ -27,12 +32,24 @@ char ROTL(unsigned char a, unsigned char s);
 char singleEncrypt(char a, char k, char collatzFactor, char s);
 char singleDecrypt(char e, char k, char collatzFactor, char s);
 
-char* bufferEncrypt(char* buffer, long bufferSize, char* key, int keySize);
-char* bufferDecrypt(char* buffer, long bufferSize, char* key, int keySize);
+char* bufferEncrypt(char* buffer, long bufferSize);
+char* bufferDecrypt(char* buffer, long bufferSize);
+
+void setKey(char* _key, int size);
 
 ////////////////////
 //  redefinition  //
 ////////////////////
+// added a function for one-time key setting
+void setKey(char* _key, int size) {
+    int seed = setKeySeed(key, size);
+    key = _key; keySize = size;
+
+    colz = genCollatzSequence(seed);
+    CACHE_CURR->next = colz;
+
+    shifts = (seed % 8);
+}
 
 // char a would be the charater that will be shifted
 // char s will be the number of shifts that will be done
@@ -69,14 +86,7 @@ char singleDecrypt(char e, char k, char collatzFactor, char s) {
     return ROTL(ROTR(e, s) ^ ((collatzFactor * k) & 0xFF), s) ^ k;
 }
 
-char* bufferEncrypt(char* buffer, long bufferSize, char* key, int keySize) {
-    int seed = setKeySeed(key, keySize);
-    char shifts = (seed % 8);
-
-    // convert the singly list to circular linked list
-    struct list* colz = genCollatzSequence(seed);
-    CACHE_CURR->next = colz;
-
+char* bufferEncrypt(char* buffer, long bufferSize) {
     char* bufferCopy = (char*)malloc(sizeof(char) * bufferSize);
     for (long i = 0; i < bufferSize; i++) {
         bufferCopy[i] = singleEncrypt(buffer[i], key[i % keySize], (colz->data & 0xFF), shifts);
@@ -86,14 +96,7 @@ char* bufferEncrypt(char* buffer, long bufferSize, char* key, int keySize) {
     return bufferCopy;
 }
 
-char* bufferDecrypt(char* buffer, long bufferSize, char* key, int keySize) {
-    int seed = setKeySeed(key, keySize);
-    char shifts = (seed % 8);
-
-    // convert the singly list to circular linked list
-    struct list* colz = genCollatzSequence(seed);
-    CACHE_CURR->next = colz;
-
+char* bufferDecrypt(char* buffer, long bufferSize) {
     char* bufferCopy = (char*)malloc(sizeof(char) * bufferSize);
     for (long i = 0; i < bufferSize; i++) {
         bufferCopy[i] = singleDecrypt(buffer[i], key[i % keySize], (colz->data & 0xFF), shifts);
