@@ -49,7 +49,7 @@ class Server {
 
         // functions bellow are to be overriden
         void listenProcess();
-        void sendClient(char*);
+        void sendClient(int, char*, int);
         virtual void recieveProcess(int, char*, int);
 };
 
@@ -221,6 +221,16 @@ void Server::setDebug(bool debugStatus) { this->debug = debugStatus; }
 // to be overloaded soon
 void Server::recieveProcess(int id, char* buffer, int bufferSize) {
     printf("Thread[%d] Recieved: %s", id, buffer);
+}
+
+// can be overloaded soon
+void Server::sendClient(int id, char* buffer, int bufferSize) {
+    if (thTracker.find(id) != thTracker.end()) {
+        tuple<bool*, thread*, int> info = thTracker.at(id);
+        int socket = std::get<2>(info);
+
+        send(socket, buffer, bufferSize, 0);
+    }
 }
 
 #endif
