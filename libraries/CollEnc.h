@@ -8,6 +8,7 @@
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "List.h"
 
 #ifndef COLLENC_H
@@ -42,7 +43,7 @@ void setKey(char* _key, int size);
 ////////////////////
 // added a function for one-time key setting
 void setKey(char* _key, int size) {
-    int seed = setKeySeed(key, size);
+    int seed = setKeySeed(_key, size);
     key = _key; keySize = size;
 
     colz = genCollatzSequence(seed);
