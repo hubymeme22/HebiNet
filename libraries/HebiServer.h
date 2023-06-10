@@ -60,56 +60,64 @@ void HebiNetServer::recieveProcess(int id, char* buffer, int bufferSize) {
     int brLen = strlen(this->breaker);
 
     // checking the packet breaker at the end of the pointer
-    for (int i = 0; i < brLen; i++)
-        if (buffer[(bufferSize - 1) - brLen + i] != this->breaker[i])
-            breakerExists = false;
-
-    if (breakerExists) {
-        if (cliMsgHolder.find(id) == cliMsgHolder.end()) {
-            this->onRecieve(id, buffer, bufferSize);
-        } else {
-            // append the latest buffer and retrieve 
-            this->appendMessage(id, buffer, bufferSize);
-            tuple<char*, int> holderPtr = cliMsgHolder.at(id);
-
-            char* buffstrd = std::get<0>(holderPtr);
-            int buffsize = std::get<1>(holderPtr);
-            this->onRecieve(id, buffstrd, buffsize);
+    if (bufferSize >= brLen) {
+        for (int i = 0; i < brLen; i++) {
+            if (buffer[(bufferSize - 1) - brLen + i] != this->breaker[i])
+                breakerExists = false;
         }
+    } else {
+        breakerExists = false;
     }
+
+    // condition if the first message is already completed
+    if ((cliMsgHolder.find(id) == cliMsgHolder.end()) && breakerExists) {
+        this->onRecieve(id, buffer, bufferSize);
+        return;
+    }
+
+    // condition if the message JUST completed
+    if ((cliMsgHolder.find(id) != cliMsgHolder.end()) && breakerExists) {
+        // append the latest buffer and retrieve
+        this->appendMessage(id, buffer, bufferSize);
+        tuple<char*, int> holderPtr = cliMsgHolder.at(id);
+
+        char* buffstrd = std::get<0>(holderPtr);
+        int buffsize = std::get<1>(holderPtr);
+        this->onRecieve(id, buffstrd, buffsize);
+
+        cliMsgHolder.erase(id);
+        return;
+    }
+
+    // otherwise, just append the message
+    this->appendMessage(id, buffer, bufferSize);
 }
 
 // appends the message to the temporary message holder
 void HebiNetServer::appendMessage(int id, char* buffer, int bufferSize) {
     if (cliMsgHolder.find(id) != cliMsgHolder.end()) {
-        tuple<char*, int> holderPtr = cliMsgHolder.at(id);
+        tuple<char*, int> msgCopy = cliMsgHolder.at(id);
+        char* _buffer = std::get<0>(msgCopy);
+        int _buffSize = std::get<1>(msgCopy);
 
-        // check if there's a buffer assigned
-        char* buffstrd = std::get<0>(holderPtr);
-        int buffsize = std::get<1>(holderPtr);
-
-        if ((buffstrd == NULL) || (buffstrd == 0)) {
-            holderPtr = tuple<char*, int>(buffer, bufferSize);
-            cliMsgHolder.emplace(std::pair<int, tuple<char*, int>>(id, holderPtr));
-            return;
+        // generate a new copy with the appended buffer
+        char* newBuffer = new char[_buffSize + bufferSize];
+        for (int i = 0; i < (_buffSize + bufferSize); i++) {
+            if (i < _buffSize) newBuffer[i] = _buffer[i];
+            else newBuffer[i] = buffer[(i - _buffSize)];
         }
 
-        // append the data
-        char* newDataHolder = new char[buffsize + bufferSize];
-        for (int i = 0; i < (buffsize + bufferSize); i++) {
-            if (i < bufferSize) newDataHolder[i] = buffstrd[i];
-            else newDataHolder[i - buffsize] = buffer[i];
-        }
-
-        // update the client message information
-        holderPtr = tuple<char*, int>(newDataHolder, (buffsize + bufferSize));
-        cliMsgHolder.emplace(std::pair<int, tuple<char*, int>>(id, holderPtr));
-    } else {
-        tuple<char*, int> holderPtr = tuple<char*, int>(buffer, bufferSize);
-        cliMsgHolder.insert(std::pair<int, tuple<char*, int>>(id, holderPtr));
+        msgCopy = tuple<char*, int>(newBuffer, (_buffSize + bufferSize));
+        cliMsgHolder.erase(id);
+        cliMsgHolder.insert(std::pair<int, tuple<char*, int>>(id, msgCopy));
+        return;
     }
+
+    // insert the buffer as the appended buffer
+    cliMsgHolder.insert(std::pair<int, tuple<char*, int>>(id, tuple<char*, int>(buffer, bufferSize)));
 }
 
 // the actual recieve of message (with complete)
-void HebiNetServer::onRecieve(int, char*, int) {
+void HebiNetServer::onRecieve(int id, char* buffer, int bufferSize) {
+    printf("Thread[%d] Rcvd: %s\n", id, buffer);
 }
