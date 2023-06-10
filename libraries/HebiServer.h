@@ -44,7 +44,7 @@ void HebiNetServer::setBreaker(const char* breaker) {
 
 // initial condition from packet to indicate if the client will be accepted
 bool HebiNetServer::acceptCondition(char* buffer, int bufferSize) {
-    return (strncmp(buffer, this->key, this->keySize) == 0);
+    return (strncmp(buffer, this->breaker, strlen(this->breaker)) == 0);
 }
 
 // overriden recieve process from server
