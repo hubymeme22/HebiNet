@@ -62,8 +62,10 @@ void HebiNetServer::recieveProcess(int id, char* buffer, int bufferSize) {
     // checking the packet breaker at the end of the pointer
     if (bufferSize >= brLen) {
         for (int i = 0; i < brLen; i++) {
-            if (buffer[(bufferSize - 1) - brLen + i] != this->breaker[i])
+            if (buffer[(bufferSize - 1) - brLen + i] != this->breaker[i]) {
                 breakerExists = false;
+                break;
+            }
         }
     } else {
         breakerExists = false;
@@ -71,7 +73,7 @@ void HebiNetServer::recieveProcess(int id, char* buffer, int bufferSize) {
 
     // condition if the first message is already completed
     if ((cliMsgHolder.find(id) == cliMsgHolder.end()) && breakerExists) {
-        this->onRecieve(id, buffer, bufferSize);
+        this->onRecieve(id, buffer, bufferSize - strlen(this->breaker));
         return;
     }
 
@@ -101,8 +103,9 @@ void HebiNetServer::appendMessage(int id, char* buffer, int bufferSize) {
         int _buffSize = std::get<1>(msgCopy);
 
         // generate a new copy with the appended buffer
-        char* newBuffer = new char[_buffSize + bufferSize];
-        for (int i = 0; i < (_buffSize + bufferSize); i++) {
+        int newBuffSize = (_buffSize + bufferSize);
+        char* newBuffer = new char[newBuffSize];
+        for (int i = 0; i < newBuffSize; i++) {
             if (i < _buffSize) newBuffer[i] = _buffer[i];
             else newBuffer[i] = buffer[(i - _buffSize)];
         }
@@ -113,8 +116,13 @@ void HebiNetServer::appendMessage(int id, char* buffer, int bufferSize) {
         return;
     }
 
-    // insert the buffer as the appended buffer
-    cliMsgHolder.insert(std::pair<int, tuple<char*, int>>(id, tuple<char*, int>(buffer, bufferSize)));
+    // generate a new copy for the buffer
+    char* newBuffer = new char[bufferSize];
+    for (int i = 0; i < bufferSize; i++)
+        newBuffer[i] = buffer[i];
+
+    tuple<char*, int> msgCopy = tuple<char*, int>(newBuffer, bufferSize);
+    cliMsgHolder.insert(std::pair<int, tuple<char*, int>>(id, msgCopy));
 }
 
 // the actual recieve of message (with complete)
