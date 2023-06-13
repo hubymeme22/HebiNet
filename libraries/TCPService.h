@@ -65,10 +65,10 @@ class Client {
         Client(const char*, int);
 
         void connectByMain();
-        void listenByMain();
-        void listenByThread();
-        void send(const char*);
-        virtual void recieveProcess(int, char*, int);
+        // void listenByMain();
+        // void listenByThread();
+        // void send(const char*);
+        // virtual void recieveProcess(int, char*, int);
 };
 
 
@@ -271,14 +271,15 @@ void Client::connectByMain() {
     }
 
     this->serverAddr.sin_family = AF_INET;
-    this->serverAddr.sin_port = this->port;
+    this->serverAddr.sin_port = htons(this->port);
 
     if (inet_pton(AF_INET, this->ip, &this->serverAddr.sin_addr) <= 0) {
         puts("IPError");
         exit(-1);
     }
 
-    if (int connectionStatus = connect(this->clientFD, (struct sockaddr*)&this->serverAddr, sizeof(this->serverAddr)) < 0) {
+    int status;
+    if ((status = connect(this->clientFD, (struct sockaddr*)&this->serverAddr, sizeof(this->serverAddr))) < 0) {
         puts("ServerConnectionError");
         exit(-1);
     }
