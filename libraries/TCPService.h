@@ -53,6 +53,28 @@ class Server {
         virtual void recieveProcess(int, char*, int);
 };
 
+class Client {
+    protected:
+        const char* ip;
+        int port;
+
+        struct sockaddr_in serverAddr;
+        int clientFD;
+
+    public:
+        Client(const char*, int);
+
+        void connectByMain();
+        void listenByMain();
+        void listenByThread();
+        void send(const char*);
+        virtual void recieveProcess(int, char*, int);
+};
+
+
+/////////////////////////
+//  Server Definition  //
+/////////////////////////
 // initializes the ip and port to be used
 Server::Server(const char* ip, int port) {
     this->ip = ip;
@@ -230,6 +252,35 @@ void Server::sendClient(int id, char* buffer, int bufferSize) {
         int socket = std::get<2>(info);
 
         send(socket, buffer, bufferSize, 0);
+    }
+}
+
+/////////////////////////
+//  Client definition  //
+/////////////////////////
+Client::Client(const char* ip, int port) {
+    this->ip = ip;
+    this->port = port;
+}
+
+// connects to the specified ip and port above
+void Client::connectByMain() {
+    if ((this->clientFD = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        puts("SocketError");
+        exit(-1);
+    }
+
+    this->serverAddr.sin_family = AF_INET;
+    this->serverAddr.sin_port = this->port;
+
+    if (inet_pton(AF_INET, this->ip, &this->serverAddr.sin_addr) <= 0) {
+        puts("IPError");
+        exit(-1);
+    }
+
+    if (int connectionStatus = connect(this->clientFD, (struct sockaddr*)&this->serverAddr, sizeof(this->serverAddr)) < 0) {
+        puts("ServerConnectionError");
+        exit(-1);
     }
 }
 
