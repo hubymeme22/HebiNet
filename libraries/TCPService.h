@@ -61,14 +61,15 @@ class Client {
         struct sockaddr_in serverAddr;
         int clientFD;
 
+        void resetCharBuff(char*, int);
+
     public:
         Client(const char*, int);
 
         void connectByMain();
-        // void listenByMain();
-        // void listenByThread();
-        // void send(const char*);
-        // virtual void recieveProcess(int, char*, int);
+        void loopedListen();
+        void sendMsg(char*, int);
+        virtual void recieveProcess(char*, int);
 };
 
 
@@ -263,6 +264,12 @@ Client::Client(const char* ip, int port) {
     this->port = port;
 }
 
+// for resetting buffers
+void Client::resetCharBuff(char* buffer, int bufferSize) {
+    for (; bufferSize > 0; bufferSize--)
+        buffer[bufferSize - 1] = 0;
+}
+
 // connects to the specified ip and port above
 void Client::connectByMain() {
     if ((this->clientFD = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -283,6 +290,30 @@ void Client::connectByMain() {
         puts("ServerConnectionError");
         exit(-1);
     }
+}
+
+// listens all the incoming messages through loop
+void Client::loopedListen() {
+    int messageSize;
+    char* buffer = new char[5024];
+
+    while (true) {
+        this->resetCharBuff(buffer, 5024);
+        messageSize = read(this->clientFD, buffer, sizeof(char)*5024);
+
+        if (messageSize == 0) break;
+        this->recieveProcess(buffer, messageSize);
+    }
+}
+
+// sends a message buffer
+void Client::sendMsg(char* buffer, int bufferSize) {
+    send(this->clientFD, buffer, (size_t)bufferSize, 0);
+}
+
+// when client has recieved a message
+void Client::recieveProcess(char* buffer, int bufferSize) {
+    printf("the message: %s\n", buffer);
 }
 
 #endif
