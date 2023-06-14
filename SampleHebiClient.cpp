@@ -1,10 +1,7 @@
-#include "libraries/TCPService.h"
+#include "libraries/HebiClient.h"
 
 int main() {
-    Client client = Client("0.0.0.0", 8080);
+    HebiNetClient client = HebiNetClient("0.0.0.0", 8080, "rickandmorty");
     client.connectByMain();
-
-    char welcome[] = "&@&";
-    client.sendMsg(welcome, 4);
     client.loopedListen();
 }
