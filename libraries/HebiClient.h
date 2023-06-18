@@ -69,6 +69,7 @@ void HebiNetClient::connectByMain() {
 
 // decrypts the packets and parse the message (will be applied soon)
 void HebiNetClient::recieveProcess(char* buffer, int bufferSize) {
+    buffer = bufferDecrypt(buffer, bufferSize);
     this->onRecieve(buffer, bufferSize);
 }
 
