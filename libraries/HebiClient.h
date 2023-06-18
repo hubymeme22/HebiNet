@@ -58,13 +58,8 @@ char* HebiNetClient::appendBreaker(char* buffer, int bufferSize) {
 void HebiNetClient::connectByMain() {
     Client::connectByMain();
 
-    // convert the breaker into char*
-    char* convertedBreaker = new char[strlen(this->breaker)];
-    for (int i = 0; i < strlen(breaker); i++)
-        convertedBreaker[i] = this->breaker[i];
-
     int brLen = strlen(this->breaker);
-    Client::sendMsg(bufferEncrypt(convertedBreaker, brLen), brLen);
+    Client::sendMsg(bufferEncrypt((char*)this->breaker, brLen), brLen);
 }
 
 // decrypts the packets and parse the message (will be applied soon)
