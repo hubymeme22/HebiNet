@@ -49,15 +49,15 @@ class Server {
 
         // functions bellow are to be overriden
         void listenProcess();
-        void sendClient(int, char*, int);
+        virtual void sendClient(int, char*, int);
         virtual void recieveProcess(int, char*, int);
 };
 
 class Client {
     protected:
+        thread* th;
         const char* ip;
         int port;
-
         struct sockaddr_in serverAddr;
         int clientFD;
 
@@ -68,7 +68,8 @@ class Client {
 
         void connectByMain();
         void loopedListen();
-        void sendMsg(char*, int);
+        void threadedListen();
+        virtual void sendMsg(char*, int);
         virtual void recieveProcess(char*, int);
 };
 
@@ -304,6 +305,11 @@ void Client::loopedListen() {
         if (messageSize == 0) break;
         this->recieveProcess(buffer, messageSize);
     }
+}
+
+// starts the loop in thread
+void Client::threadedListen() {
+    this->th = new thread(&Client::loopedListen, this);
 }
 
 // sends a message buffer
