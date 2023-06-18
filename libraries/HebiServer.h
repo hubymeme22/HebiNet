@@ -24,6 +24,7 @@ class HebiNetServer: public Server {
         HebiNetServer(const char*, int, const char*);
         void setBreaker(const char*);
         void recieveProcess(int, char*, int);
+        virtual void sendClient(int, char*, int);
         virtual void onRecieve(int, char*, int);
         virtual bool acceptCondition(char*, int);
 };
@@ -49,6 +50,9 @@ bool HebiNetServer::acceptCondition(char* buffer, int bufferSize) {
 
 // overriden recieve process from server
 void HebiNetServer::recieveProcess(int id, char* buffer, int bufferSize) {
+    // decrypt the buffer
+    buffer = bufferDecrypt(buffer, bufferSize);
+
     // for first time connection, confirm them by their initial packet
     if (acceptedClients.find(id) == acceptedClients.end()) {
         if (this->acceptCondition(buffer, bufferSize)) acceptedClients.insert(std::pair<int, bool>(id, true));
@@ -93,6 +97,11 @@ void HebiNetServer::recieveProcess(int id, char* buffer, int bufferSize) {
 
     // otherwise, just append the message
     this->appendMessage(id, buffer, bufferSize);
+}
+
+void HebiNetServer::sendClient(int id, char* buffer, int bufferSize) {
+    buffer = bufferEncrypt(buffer, bufferSize);
+    Server::sendClient(id, buffer, bufferSize);
 }
 
 // appends the message to the temporary message holder
